@@ -1,0 +1,14 @@
+{
+  "name": "pulse-events",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/api",
+    "start": "npm run start -w apps/api",
+    "test": "npm run test -w apps/api"
+  }
+}
