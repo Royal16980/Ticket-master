@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pulse Events</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background:#0f172a; color:#e2e8f0; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 20px; }
+    .card { background:#1e293b; border-radius:12px; padding:16px; margin-bottom:14px; }
+    button { background:#22c55e; border:none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:700; }
+    input { width:100%; padding:8px; margin:6px 0 10px; border-radius:6px; border:1px solid #334155; background:#0b1220; color:#e2e8f0; }
+    h1,h2 { margin-top:0; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; }
+    .pill { display:inline-block; padding:2px 8px; background:#334155; border-radius:999px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Pulse Events</h1>
+    <p>Social event discovery + ticketing + rewards.</p>
+
+    <div class="card">
+      <h2>Quick Signup (Attendee)</h2>
+      <input id="email" placeholder="email@example.com" />
+      <input id="name" placeholder="Your name" />
+      <button onclick="signup()">Create account</button>
+      <p id="userStatus"></p>
+    </div>
+
+    <div class="card">
+      <h2>Trending Events</h2>
+      <div id="events" class="grid"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    async function signup() {
+      const email = document.getElementById('email').value;
+      const name = document.getElementById('name').value;
+      const res = await fetch('/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, role: 'attendee' })
+      });
+      currentUser = await res.json();
+      document.getElementById('userStatus').innerText = `Signed in as ${currentUser.name} (points: ${currentUser.points})`;
+    }
+
+    async function loadEvents() {
+      const res = await fetch('/events/trending');
+      const events = await res.json();
+      const container = document.getElementById('events');
+      container.innerHTML = '';
+      events.forEach(event => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<h3>${event.title}</h3>
+          <p><span class="pill">${event.category}</span> ${event.city}</p>
+          <p>${new Date(event.startTime).toLocaleString()}</p>
+          <button onclick="viewEvent('${event.id}')">View details</button>
+          <div id="detail-${event.id}"></div>`;
+        container.appendChild(card);
+      });
+    }
+
+    async function viewEvent(id) {
+      const res = await fetch(`/events/${id}`);
+      const event = await res.json();
+      const ticket = event.ticketTypes[0];
+      const area = document.getElementById(`detail-${id}`);
+      area.innerHTML = `<p>From $${ticket.price} • Available ${ticket.capacity - ticket.sold}</p>
+        <button onclick="buy('${event.id}','${ticket.id}')">Buy 1 ticket</button>`;
+    }
+
+    async function buy(eventId, ticketTypeId) {
+      if (!currentUser) return alert('Sign up first');
+      const res = await fetch('/tickets/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id, eventId, ticketTypeId, quantity: 1 })
+      });
+      const data = await res.json();
+      alert(`Purchase complete! Ticket QR: ${data.tickets[0].qrToken}`);
+    }
+
+    loadEvents();
+  </script>
+</body>
+</html>
